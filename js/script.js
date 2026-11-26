@@ -528,7 +528,117 @@ async function askGemini(onText) {
   throw new Error("Gemini is very busy right now. Please try again in a minute.");
 }
 
+// ---------- 8. What happens when the user sends a message ----------
+async function handleSend(event) {
+  event.preventDefault();   // stops the page from reloading
+
+  const text = userInput.value.trim();
+
+  // We can send text, files, or both. Only stop if there is nothing at all.
+  if ((!text && pendingFiles.length === 0) || isWaiting) return;
+
+  // Make sure the key was added
+  if (!GEMINI_API_KEY || GEMINI_API_KEY.startsWith("PASTE")) {
+    addMessage("Add your Gemini API key in js/config.js first, then refresh the page.", "bot", true);
+    return;
+  }
+
+  // Take the files out of the tray and clear it
+  const attachments = pendingFiles;
+  pendingFiles = [];
+  renderTray();
+
+  // Show the user's message (with its photos and videos) right away
+  addMessage(text, "user", false, attachments);
+  userInput.value = "";
+
+  setWaiting(true);
+  showTyping();
+
+  let userEntry = null;   // the history item for this message
+  let liveRow = null;     // the bot message that fills up while the answer streams in
+
+  try {
+    // Build the message parts: files first, then the text
+    const parts = [];
+
+    // Shrink and convert every file at the same time
+    const preparedFiles = await Promise.all(attachments.map(item => prepareFile(item.file)));
+
+    preparedFiles.forEach(file => {
+      parts.push({ inlineData: { mimeType: file.mimeType, data: file.data } });
+    });
+
+    // If the user sent only a file, give Gemini something to work with
+    parts.push({ text: text || "Please look at the attached file(s) and tell me what they contain." });
+
+    userEntry = { role: "user", parts: parts };
+    conversation.push(userEntry);
+
+    // The bot bubble is created when the first piece of text arrives,
+    // then it grows as more text streams in
+    let liveTextBox = null;
+
+    const reply = await askGemini((textSoFar) => {
+      if (!liveTextBox) {
+        hideTyping();
+        const bubble = addMessage("", "bot");
+        liveRow = bubble.closest(".message");
+        liveTextBox = document.createElement("div");
+        bubble.appendChild(liveTextBox);
+      }
+
+      liveTextBox.innerHTML = formatText(textSoFar);
+      messagesBox.scrollTop = messagesBox.scrollHeight;
+    });
+
+    // Re-sending big files with every question would hit the size limit,
+    // so once Gemini has answered we swap the file data for a short note.
+    // Gemini still remembers its own answer about the files.
+    if (attachments.length > 0) {
+      const names = attachments.map(item => item.file.name).join(", ");
+      userEntry.parts = [{ text: `[The user attached: ${names}] ${text}` }];
+    }
+
+    // Save the answer too, so Gemini remembers the conversation
+    conversation.push({ role: "model", parts: [{ text: reply }] });
+
+    hideTyping();   // the reply is already on screen, we just make sure the dots are gone
+  } catch (error) {
+    // Remove the failed question so the history stays clean
+    if (userEntry && conversation[conversation.length - 1] === userEntry) {
+      conversation.pop();
+    }
+
+    // If a half-finished reply is on screen, remove it before showing the error
+    if (liveRow) liveRow.remove();
+
+    hideTyping();
+    addMessage(`Something went wrong: ${error.message}`, "bot", true);
+  } finally {
+    setWaiting(false);
+    userInput.focus();
+  }
+}
+
+// ---------- 9. Clear the chat ----------
+function clearChat() {
+  conversation = [];
+  pendingFiles = [];
+  renderTray();
+  messagesBox.innerHTML = "";
+
+  // Free the memory used by photo and video previews
+  objectUrls.forEach(url => URL.revokeObjectURL(url));
+  objectUrls = [];
+
+  showGreeting();
+}
+
 // ---------- 10. Wire everything up ----------
+chatForm.addEventListener("submit", handleSend);
+clearBtn.addEventListener("click", clearChat);
+
 // The paperclip opens the hidden file picker
 attachBtn.addEventListener("click", () => fileInput.click());
 
