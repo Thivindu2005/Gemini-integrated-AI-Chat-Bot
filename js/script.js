@@ -393,6 +393,141 @@ function showGreeting() {
   addMessage("Hello! 👋\nI'm your AI assistant.\nHow can I help you today?", "bot");
 }
 
+// ---------- 7. Talking to Gemini ----------
+
+// Pauses for a number of milliseconds (used between retries)
+function wait(ms) {
+  return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Reads the streamed answer piece by piece.
+// onText is called every time new text arrives, with ALL the text so far.
+async function readStream(response, onText) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+
+  let buffer = "";     // text that has arrived but is not processed yet
+  let fullText = "";   // the answer so far
+
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) break;
+
+    buffer += decoder.decode(value, { stream: true });
+
+    // The stream is made of lines. Keep the last (maybe unfinished) line for next time.
+    const lines = buffer.split("\n");
+    buffer = lines.pop();
+
+    for (const line of lines) {
+      if (!line.startsWith("data:")) continue;
+
+      const json = line.slice(5).trim();
+      if (!json) continue;
+
+      const chunk = JSON.parse(json);
+      const parts = chunk.candidates?.[0]?.content?.parts || [];
+
+      // Join the text parts (skipping Gemini's private "thought" parts)
+      const piece = parts
+        .filter(part => part.text && !part.thought)
+        .map(part => part.text)
+        .join("");
+
+      if (piece) {
+        fullText += piece;
+        onText(fullText);
+      }
+    }
+  }
+
+  if (!fullText) {
+    throw new Error("Gemini did not return an answer. Try rephrasing your question.");
+  }
+
+  return fullText;
+}
+
+// Sends the whole conversation to Gemini and streams back the reply.
+// If Google says the model is busy (503) or we hit a rate limit (429),
+// we wait a moment and try again, then switch to the backup model.
+async function askGemini(onText) {
+  let wasBusy = false;        // did any model say "too busy"?
+  let retiredMessage = "";    // Google's message if a model no longer exists
+
+  for (const model of MODELS_TO_TRY) {
+    for (let attempt = 0; attempt <= RETRIES_PER_MODEL; attempt++) {
+
+      const startTime = performance.now();
+
+      const response = await fetch(getApiUrl(model), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": GEMINI_API_KEY
+        },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: SYSTEM_PROMPT }] },
+          contents: conversation.slice(-MAX_HISTORY),
+          // only added when a thinking level is set in config.js
+          ...(THINKING_LEVEL && {
+            generationConfig: { thinkingConfig: { thinkingLevel: THINKING_LEVEL } }
+          })
+        })
+      });
+
+      // Timing log: open the browser Console (F12) to see it
+      const headersMs = Math.round(performance.now() - startTime);
+      console.log(`[Gemini] ${model} attempt ${attempt + 1}: status ${response.status}, response started after ${headersMs} ms`);
+
+      // Success: read the streamed answer
+      if (response.ok) {
+        const text = await readStream(response, onText);
+        console.log(`[Gemini] ${model}: finished in ${Math.round(performance.now() - startTime)} ms`);
+        return text;
+      }
+
+      // Something went wrong. Google sends the details as JSON.
+      let data = await response.json();
+      if (Array.isArray(data)) data = data[0];
+
+      const errorMessage = data.error?.message || "";
+      const isBusy =
+        [429, 500, 502, 503, 504].includes(response.status) ||
+        data.error?.status === "UNAVAILABLE" ||
+        /high demand|overloaded/i.test(errorMessage);
+
+      // A retired or unknown model will never work, so skip it and try the next one
+      const isGone =
+        response.status === 404 ||
+        /no longer available|not found/i.test(errorMessage);
+      if (isGone) {
+        retiredMessage = errorMessage;
+        break;   // leave the retry loop and move on to the next model
+      }
+
+      // Any other error (wrong key, bad file...) will not fix itself,
+      // so show Google's message straight away
+      if (!isBusy) {
+        throw new Error(errorMessage || "Unknown error");
+      }
+
+      wasBusy = true;
+
+      // Busy: wait 1 second, then 2 seconds, then try again
+      if (attempt < RETRIES_PER_MODEL) {
+        await wait(600);
+      }
+    }
+  }
+
+  // Nothing worked. Say why.
+  if (!wasBusy && retiredMessage) {
+    throw new Error(`${retiredMessage} Update the model names in js/config.js.`);
+  }
+  throw new Error("Gemini is very busy right now. Please try again in a minute.");
+}
+
 // ---------- 10. Wire everything up ----------
 // The paperclip opens the hidden file picker
 attachBtn.addEventListener("click", () => fileInput.click());
