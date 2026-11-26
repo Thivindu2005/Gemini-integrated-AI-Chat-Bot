@@ -385,6 +385,32 @@ body {
   outline-offset: 2px;
 }
 
+/* ---------- 11. Small screens ---------- */
+@media (max-width: 500px) {
+  body {
+    padding: 0;
+  }
+
+  .chat {
+    height: 100vh;
+    max-width: none;
+    border-radius: 0;
+  }
+
+  .message {
+    max-width: 94%;
+  }
+}
+
+/* ---------- 12. Respect people who turn animations off ---------- */
+@media (prefers-reduced-motion: reduce) {
+  .blob,
+  .message,
+  .typing span {
+    animation: none;
+  }
+}
+
 /* ---------- 13. Attachments ---------- */
 
 /* The paperclip button */
