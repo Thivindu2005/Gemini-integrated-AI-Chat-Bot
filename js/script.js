@@ -122,3 +122,120 @@ function getExtension(fileName) {
   return parts.length > 1 ? parts.pop().slice(0, 4).toLowerCase() : "file";
 }
 
+// ---------- 6. Building the chat bubbles ----------
+
+// The photo, video or file card shown inside a sent message
+function createMediaElement(item) {
+  const type = item.file.type;
+
+  if (type.startsWith("image/")) {
+    const img = document.createElement("img");
+    img.className = "media-img";
+    img.src = item.url;
+    img.alt = item.file.name;
+    return img;
+  }
+
+  if (type.startsWith("video/")) {
+    const video = document.createElement("video");
+    video.className = "media-video";
+    video.src = item.url;
+    video.controls = true;
+    return video;
+  }
+
+  const fileCard = document.createElement("div");
+  fileCard.className = "media-file";
+  fileCard.textContent = `📎 ${item.file.name}`;
+  return fileCard;
+}
+
+// sender is "bot" or "user". isError makes the bubble red.
+// attachments is the list of files that were sent with this message.
+function addMessage(text, sender, isError = false, attachments = []) {
+  // The row that holds avatar + bubble + time
+  const row = document.createElement("div");
+  row.className = `message ${sender}`;
+
+  // Only the bot gets an avatar
+  if (sender === "bot") {
+    const avatar = document.createElement("div");
+    avatar.className = "avatar";
+    avatar.innerHTML = BOT_SVG;
+    row.appendChild(avatar);
+  }
+
+  const content = document.createElement("div");
+  content.className = "message-content";
+
+  // The bubble itself
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+  if (isError) bubble.classList.add("error");
+
+  // Photos, videos and files go first, above the text
+  if (attachments.length > 0) {
+    const mediaBox = document.createElement("div");
+    mediaBox.className = "bubble-media";
+    attachments.forEach(item => mediaBox.appendChild(createMediaElement(item)));
+    bubble.appendChild(mediaBox);
+  }
+
+  // Then the text (a message can be just a file with no text)
+  if (text) {
+    const textBox = document.createElement("div");
+
+    if (sender === "bot") {
+      textBox.innerHTML = formatText(text);   // safe, because formatText escapes first
+    } else {
+      textBox.textContent = text;             // user text is never treated as HTML
+    }
+
+    bubble.appendChild(textBox);
+  }
+
+  // The timestamp (user messages also get the double tick)
+  const time = document.createElement("div");
+  time.className = "time";
+  time.textContent = getTime();
+  if (sender === "user") {
+    time.insertAdjacentHTML("beforeend", TICKS_SVG);
+  }
+
+  content.appendChild(bubble);
+  content.appendChild(time);
+  row.appendChild(content);
+  messagesBox.appendChild(row);
+
+  scrollToBottom();
+  return bubble;
+}
+
+// The three bouncing dots shown while Gemini is thinking
+function showTyping() {
+  const row = document.createElement("div");
+  row.className = "message bot";
+  row.id = "typing-row";
+
+  row.innerHTML = `
+    <div class="avatar">${BOT_SVG}</div>
+    <div class="message-content">
+      <div class="bubble typing"><span></span><span></span><span></span></div>
+    </div>`;
+
+  messagesBox.appendChild(row);
+  scrollToBottom();
+}
+
+function hideTyping() {
+  const row = document.getElementById("typing-row");
+  if (row) row.remove();
+}
+
+// The first message the bot shows
+function showGreeting() {
+  addMessage("Hello! 👋\nI'm your AI assistant.\nHow can I help you today?", "bot");
+}
+
+// ---------- 10. Wire everything up ----------
+showGreeting();
