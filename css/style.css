@@ -320,7 +320,7 @@ body {
   align-items: center;
   gap: 10px;
   margin: 0 18px 18px;
-  padding: 7px 7px 7px 22px;
+  padding: 7px 7px 7px 7px;
   border-radius: 999px;
   background: rgba(255, 255, 255, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.85);
@@ -385,3 +385,169 @@ body {
   outline-offset: 2px;
 }
 
+/* ---------- 13. Attachments ---------- */
+
+/* The paperclip button */
+.attach-btn {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: var(--indigo);
+  background: rgba(255, 255, 255, 0.55);
+  box-shadow: inset 0 1px 0 #fff;
+  transition: background 0.2s;
+}
+
+.attach-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+.attach-btn:hover {
+  background: rgba(255, 255, 255, 0.9);
+}
+
+.attach-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.attach-btn:focus-visible {
+  outline: 3px solid rgba(91, 95, 224, 0.6);
+  outline-offset: 2px;
+}
+
+/* The glass strip above the input that shows chosen files */
+.attachment-tray {
+  display: flex;
+  gap: 10px;
+  margin: 0 18px 10px;
+  padding: 10px;
+  overflow-x: auto;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: inset 0 1px 0 #fff;
+  scrollbar-width: thin;
+}
+
+/* the hidden attribute must win over display:flex above */
+.attachment-tray[hidden] {
+  display: none;
+}
+
+/* One file in the tray */
+.attachment-chip {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 200px;
+  padding: 6px 32px 6px 6px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.7);
+  border: 1px solid rgba(255, 255, 255, 0.9);
+}
+
+.chip-thumb {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  border-radius: 10px;
+  object-fit: cover;
+  background: rgba(91, 95, 224, 0.15);
+}
+
+/* Small coloured square with the file extension (pdf, txt, mp3...) */
+.file-badge {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 10px;
+  font-size: 12px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, var(--indigo-light), var(--indigo));
+}
+
+.chip-name {
+  font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chip-remove {
+  position: absolute;
+  top: 50%;
+  right: 6px;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border: none;
+  border-radius: 50%;
+  font-size: 16px;
+  line-height: 1;
+  color: var(--text-dark);
+  background: rgba(27, 28, 46, 0.12);
+  cursor: pointer;
+}
+
+.chip-remove:hover {
+  background: rgba(27, 28, 46, 0.25);
+}
+
+/* Highlight the card while a file is dragged over it */
+.chat.drag-over {
+  box-shadow: 0 25px 60px rgba(70, 60, 200, 0.25), var(--glass-shine), 0 0 0 3px rgba(124, 127, 240, 0.7);
+}
+
+/* Photos, videos and files inside a chat bubble */
+.bubble-media {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.bubble-media:last-child {
+  margin-bottom: 0;
+}
+
+.media-img {
+  display: block;
+  max-width: 260px;
+  max-height: 260px;
+  border-radius: 14px;
+  object-fit: cover;
+}
+
+.media-video {
+  display: block;
+  width: 260px;
+  max-width: 100%;
+  border-radius: 14px;
+  background: #000;
+}
+
+.media-file {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 12px;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.22);
+}

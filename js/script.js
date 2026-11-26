@@ -122,6 +122,162 @@ function getExtension(fileName) {
   return parts.length > 1 ? parts.pop().slice(0, 4).toLowerCase() : "file";
 }
 
+// ---------- 5. Attachments ----------
+
+// Is this a file type Gemini can read?
+function isSupported(file) {
+  return (
+    file.type.startsWith("image/") ||
+    file.type.startsWith("video/") ||
+    file.type.startsWith("audio/") ||
+    file.type.startsWith("text/") ||
+    file.type === "application/pdf"
+  );
+}
+
+// Adds up the size of everything waiting to be sent
+function getTotalSize() {
+  return pendingFiles.reduce((total, item) => total + item.file.size, 0);
+}
+
+// Checks each chosen file and adds the good ones to pendingFiles
+function addFiles(fileList) {
+  for (const file of fileList) {
+    if (!isSupported(file)) {
+      addMessage(`"${file.name}" is not a supported file type. Try an image, video, audio, PDF or text file.`, "bot", true);
+      continue;
+    }
+
+    if (getTotalSize() + file.size > MAX_TOTAL_MB * 1024 * 1024) {
+      addMessage(`"${file.name}" is too big. Attachments can add up to ${MAX_TOTAL_MB} MB per message.`, "bot", true);
+      continue;
+    }
+
+    // Photos and videos get a preview link so we can show them
+    let url = null;
+    if (file.type.startsWith("image/") || file.type.startsWith("video/")) {
+      url = URL.createObjectURL(file);
+      objectUrls.push(url);
+    }
+
+    pendingFiles.push({ file: file, url: url });
+  }
+
+  renderTray();
+}
+
+// Small square preview for the tray: photo, video frame, or an extension badge
+function createThumb(item) {
+  const type = item.file.type;
+
+  if (type.startsWith("image/")) {
+    const img = document.createElement("img");
+    img.className = "chip-thumb";
+    img.src = item.url;
+    img.alt = item.file.name;
+    return img;
+  }
+
+  if (type.startsWith("video/")) {
+    const video = document.createElement("video");
+    video.className = "chip-thumb";
+    video.src = item.url;
+    video.muted = true;
+    video.preload = "metadata";
+    return video;
+  }
+
+  const badge = document.createElement("div");
+  badge.className = "file-badge";
+  badge.textContent = getExtension(item.file.name);
+  return badge;
+}
+
+// Redraws the strip above the input bar
+function renderTray() {
+  tray.innerHTML = "";
+  tray.hidden = pendingFiles.length === 0;
+
+  pendingFiles.forEach((item, index) => {
+    const chip = document.createElement("div");
+    chip.className = "attachment-chip";
+
+    const name = document.createElement("span");
+    name.className = "chip-name";
+    name.textContent = item.file.name;
+
+    // The little x that removes the file
+    const removeBtn = document.createElement("button");
+    removeBtn.type = "button";
+    removeBtn.className = "chip-remove";
+    removeBtn.textContent = "×";
+    removeBtn.setAttribute("aria-label", `Remove ${item.file.name}`);
+    removeBtn.addEventListener("click", () => {
+      if (item.url) URL.revokeObjectURL(item.url);
+      pendingFiles.splice(index, 1);
+      renderTray();
+    });
+
+    chip.appendChild(createThumb(item));
+    chip.appendChild(name);
+    chip.appendChild(removeBtn);
+    tray.appendChild(chip);
+  });
+}
+
+// Turns a file into base64 text, which is how we send it to Gemini
+function fileToBase64(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+
+    // reader.result looks like "data:image/png;base64,AAAA..."
+    // we only want the part after the comma
+    reader.onload = () => resolve(reader.result.split(",")[1]);
+    reader.onerror = () => reject(new Error(`Could not read ${file.name || "the file"}`));
+
+    reader.readAsDataURL(file);
+  });
+}
+
+// Phone photos are often 3 to 8 MB, but Gemini does not need that much detail.
+// We shrink big photos first, which makes the upload (and the answer) much faster.
+const MAX_IMAGE_SIDE = 1280;
+
+// Returns { mimeType, data } ready to send to Gemini
+async function prepareFile(file) {
+  const canResize = ["image/jpeg", "image/png", "image/webp"].includes(file.type);
+
+  if (canResize && file.size > 300 * 1024) {
+    try {
+      const bitmap = await createImageBitmap(file);
+
+      // Never make the image bigger, only smaller
+      const scale = Math.min(1, MAX_IMAGE_SIDE / Math.max(bitmap.width, bitmap.height));
+
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(bitmap.width * scale);
+      canvas.height = Math.round(bitmap.height * scale);
+
+      const ctx = canvas.getContext("2d");
+      ctx.fillStyle = "#ffffff";   // JPEG has no transparency, so use a white background
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+      bitmap.close();
+
+      const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.85));
+
+      // Only use the small version if it really is smaller
+      if (blob && blob.size < file.size) {
+        return { mimeType: "image/jpeg", data: await fileToBase64(blob) };
+      }
+    } catch (error) {
+      console.log("Could not shrink the image, sending the original:", error);
+    }
+  }
+
+  return { mimeType: file.type, data: await fileToBase64(file) };
+}
+
 // ---------- 6. Building the chat bubbles ----------
 
 // The photo, video or file card shown inside a sent message
@@ -238,4 +394,33 @@ function showGreeting() {
 }
 
 // ---------- 10. Wire everything up ----------
+// The paperclip opens the hidden file picker
+attachBtn.addEventListener("click", () => fileInput.click());
+
+// When files are chosen, add them, then reset the picker
+// so choosing the same file again still works
+fileInput.addEventListener("change", () => {
+  addFiles(fileInput.files);
+  fileInput.value = "";
+});
+
+// Drag and drop: drop files anywhere on the chat card
+chatCard.addEventListener("dragover", (event) => {
+  event.preventDefault();   // needed, otherwise the browser opens the file instead
+  chatCard.classList.add("drag-over");
+});
+
+chatCard.addEventListener("dragleave", (event) => {
+  // only remove the highlight when leaving the card itself, not its children
+  if (!chatCard.contains(event.relatedTarget)) {
+    chatCard.classList.remove("drag-over");
+  }
+});
+
+chatCard.addEventListener("drop", (event) => {
+  event.preventDefault();
+  chatCard.classList.remove("drag-over");
+  if (!isWaiting) addFiles(event.dataTransfer.files);
+});
+
 showGreeting();

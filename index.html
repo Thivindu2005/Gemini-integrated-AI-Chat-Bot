@@ -54,8 +54,21 @@
     <!-- Messages are added here by script.js -->
     <section id="messages" class="messages" aria-live="polite"></section>
 
+    <!-- Files the user picked but has not sent yet (hidden until something is attached) -->
+    <div id="attachment-tray" class="attachment-tray" hidden></div>
+
     <!-- Input bar -->
     <form id="chat-form" class="input-bar">
+
+      <!-- Paperclip button. It opens the hidden file picker below -->
+      <button type="button" id="attach-btn" class="attach-btn" title="Attach files, photos or videos" aria-label="Attach files, photos or videos">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M21.4 11.1l-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>
+        </svg>
+      </button>
+
+      <!-- The real file picker. Hidden, because the paperclip button triggers it -->
+      <input type="file" id="file-input" accept="image/*,video/*,audio/*,application/pdf,text/*" multiple hidden>
 
       <input type="text" id="user-input" placeholder="Type your message..." autocomplete="off" autofocus>
       <button type="submit" id="send-btn" class="send-btn" aria-label="Send message">
