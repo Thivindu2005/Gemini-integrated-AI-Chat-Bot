@@ -1,0 +1,40 @@
+/* ==========================================================
+   AI Chatbot - liquid glass style
+   ========================================================== */
+
+/* ---------- 1. Colours and sizes we reuse everywhere ---------- */
+:root {
+  --indigo: #5b5fe0;
+  --indigo-light: #7c7ff0;
+  --text-dark: #1b1c2e;
+  --text-soft: #5d6280;
+  --online: #3fcf8e;
+
+  /* the glass recipe */
+  --glass-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.42), rgba(255, 255, 255, 0.14));
+  --glass-border: 1px solid rgba(255, 255, 255, 0.55);
+  --glass-blur: blur(22px) saturate(180%);
+  --glass-shine: inset 0 1px 0 rgba(255, 255, 255, 0.85),
+                 inset 0 -1px 0 rgba(255, 255, 255, 0.25),
+                 inset 0 0 24px rgba(255, 255, 255, 0.18);
+}
+
+/* ---------- 2. Page reset and background ---------- */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  font-family: "Inter", "Segoe UI", system-ui, -apple-system, sans-serif;
+  color: var(--text-dark);
+  background: linear-gradient(135deg, #c9d4ff 0%, #e4d3fb 50%, #bfe6fb 100%);
+  overflow: hidden;
+}
+

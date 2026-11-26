@@ -1,0 +1,6 @@
+# keeps your Gemini API key out of GitHub
+js/config.js
+
+# system files
+.DS_Store
+Thumbs.db
