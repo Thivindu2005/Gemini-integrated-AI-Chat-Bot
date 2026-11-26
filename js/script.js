@@ -1,0 +1,124 @@
+// ==========================================================
+// script.js - the chatbot logic (with file, photo and video attachments)
+// ==========================================================
+
+// ---------- 1. Grab the elements we need from the page ----------
+const chatCard = document.querySelector(".chat");
+const messagesBox = document.getElementById("messages");
+const chatForm = document.getElementById("chat-form");
+const userInput = document.getElementById("user-input");
+const sendBtn = document.getElementById("send-btn");
+const clearBtn = document.getElementById("clear-btn");
+const attachBtn = document.getElementById("attach-btn");
+const fileInput = document.getElementById("file-input");
+const tray = document.getElementById("attachment-tray");
+
+// ---------- 2. Settings and state ----------
+// Builds the address we send questions to, for a given model name
+function getApiUrl(model) {
+  // streamGenerateContent sends the answer in small pieces as Gemini writes it
+  return `https://generativelanguage.googleapis.com/v1beta/models/${model}:streamGenerateContent?alt=sse`;
+}
+
+// The models we try, in order. If the main one is busy we switch to the backup.
+// The backup is optional and comes from config.js.
+const MODELS_TO_TRY = [GEMINI_MODEL];
+if (typeof GEMINI_FALLBACK_MODEL !== "undefined" && GEMINI_FALLBACK_MODEL) {
+  MODELS_TO_TRY.push(GEMINI_FALLBACK_MODEL);
+}
+
+// How much "thinking" Gemini does before answering. "low" is much faster for chat.
+// The value comes from config.js. Leave it as "" there to use Google's default.
+const THINKING_LEVEL = (typeof GEMINI_THINKING_LEVEL !== "undefined") ? GEMINI_THINKING_LEVEL : "";
+
+// How many extra tries each model gets when Google says "too busy".
+// Kept low so we switch to the backup model quickly instead of waiting around.
+const RETRIES_PER_MODEL = 1;
+
+// We only send the most recent messages. A shorter history means a smaller,
+// faster request. 19 is odd on purpose so the list always starts with a user message.
+const MAX_HISTORY = 19;
+
+// This tells Gemini how to behave
+const SYSTEM_PROMPT =
+  "You are a friendly AI assistant. Explain things in simple words and keep your answers short and clear.";
+
+// Gemini accepts about 20 MB per request. Files grow by roughly a third
+// when we convert them to text (base64), so we stop at 14 MB in total.
+const MAX_TOTAL_MB = 14;
+
+// Gemini does not remember anything between requests,
+// so we keep the whole conversation here and send it every time.
+let conversation = [];
+
+// Files the user picked but has not sent yet.
+// Each item looks like { file: File, url: "blob:..." or null }
+let pendingFiles = [];
+
+// Every preview link we create, so we can free the memory when the chat is cleared
+let objectUrls = [];
+
+// True while we are waiting for Gemini to answer
+let isWaiting = false;
+
+// ---------- 3. Small icons we insert from JavaScript ----------
+const BOT_SVG = `
+  <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+    <line x1="24" y1="7" x2="24" y2="12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+    <circle cx="24" cy="5.5" r="2.6" fill="currentColor"/>
+    <rect x="3" y="22" width="4" height="10" rx="2" fill="currentColor"/>
+    <rect x="41" y="22" width="4" height="10" rx="2" fill="currentColor"/>
+    <rect x="7" y="12" width="34" height="28" rx="12" fill="currentColor"/>
+    <circle class="bot-eye" cx="18" cy="25" r="2.8"/>
+    <circle class="bot-eye" cx="30" cy="25" r="2.8"/>
+    <path class="bot-mouth" d="M20 31c2.5 2 5.5 2 8 0" stroke-width="2.2" stroke-linecap="round"/>
+  </svg>`;
+
+// The double tick shown under the user's messages
+const TICKS_SVG = `
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+    <path d="M2 13l4 4L14 8"/>
+    <path d="M10 15l2 2L22 7"/>
+  </svg>`;
+
+// ---------- 4. Helper functions ----------
+
+// Returns the current time like "10:30 AM"
+function getTime() {
+  return new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+}
+
+// Keeps the newest message in view
+function scrollToBottom() {
+  messagesBox.scrollTo({ top: messagesBox.scrollHeight, behavior: "smooth" });
+}
+
+// Gemini replies with markdown (**bold**, `code`, * bullets).
+// This turns the basics into HTML, after making the text safe first.
+function formatText(text) {
+  const safe = text
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
+  return safe
+    .replace(/^\s*\* /gm, "• ")                       // "* item" becomes "• item"
+    .replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>") // **bold**
+    .replace(/`(.+?)`/g, "<code>$1</code>")           // `code`
+    .replace(/\n/g, "<br>");                          // new lines
+}
+
+// Disables the input while we wait for an answer
+function setWaiting(state) {
+  isWaiting = state;
+  sendBtn.disabled = state;
+  userInput.disabled = state;
+  attachBtn.disabled = state;
+}
+
+// Gets the extension of a file name: "holiday.mp4" becomes "mp4"
+function getExtension(fileName) {
+  const parts = fileName.split(".");
+  return parts.length > 1 ? parts.pop().slice(0, 4).toLowerCase() : "file";
+}
+
