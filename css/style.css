@@ -38,3 +38,44 @@ body {
   overflow: hidden;
 }
 
+/* ---------- 3. Floating blobs behind the glass ---------- */
+.blob {
+  position: fixed;
+  border-radius: 50%;
+  filter: blur(60px);
+  opacity: 0.85;
+  animation: float 14s ease-in-out infinite alternate;
+  z-index: 0;
+}
+
+.blob-one {
+  width: 380px;
+  height: 380px;
+  background: #6f73f5;
+  top: -80px;
+  left: 8%;
+}
+
+.blob-two {
+  width: 340px;
+  height: 340px;
+  background: #f0a6f5;
+  bottom: -90px;
+  right: 10%;
+  animation-delay: -5s;
+}
+
+.blob-three {
+  width: 260px;
+  height: 260px;
+  background: #5fd7f0;
+  top: 45%;
+  left: 55%;
+  animation-delay: -9s;
+}
+
+@keyframes float {
+  from { transform: translate(0, 0) scale(1); }
+  to   { transform: translate(40px, -30px) scale(1.12); }
+}
+
