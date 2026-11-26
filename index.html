@@ -18,5 +18,43 @@
   <div class="blob blob-two"></div>
   <div class="blob blob-three"></div>
 
+  <!-- The glass chat card -->
+  <main class="chat">
+
+    <!-- Header: bot avatar, title, online status and the menu button -->
+    <header class="chat-header">
+      <div class="avatar avatar-large avatar-header">
+        <svg viewBox="0 0 48 48" fill="none" aria-hidden="true">
+          <line x1="24" y1="7" x2="24" y2="12" stroke="currentColor" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="24" cy="5.5" r="2.6" fill="currentColor"/>
+          <rect x="3" y="22" width="4" height="10" rx="2" fill="currentColor"/>
+          <rect x="41" y="22" width="4" height="10" rx="2" fill="currentColor"/>
+          <rect x="7" y="12" width="34" height="28" rx="12" fill="currentColor"/>
+          <circle class="bot-eye" cx="18" cy="25" r="2.8"/>
+          <circle class="bot-eye" cx="30" cy="25" r="2.8"/>
+          <path class="bot-mouth" d="M20 31c2.5 2 5.5 2 8 0" stroke-width="2.2" stroke-linecap="round"/>
+        </svg>
+      </div>
+
+      <div class="header-text">
+        <h1>AI Chatbot</h1>
+        <p>Always here to help you <span class="status-dot"></span></p>
+      </div>
+
+      <!-- The three dots button clears the conversation -->
+      <button type="button" id="clear-btn" class="icon-btn" title="Clear chat" aria-label="Clear chat">
+        <svg viewBox="0 0 24 24" aria-hidden="true">
+          <circle cx="5" cy="12" r="2"/>
+          <circle cx="12" cy="12" r="2"/>
+          <circle cx="19" cy="12" r="2"/>
+        </svg>
+      </button>
+    </header>
+
+    <!-- Messages are added here by script.js -->
+    <section id="messages" class="messages" aria-live="polite"></section>
+
+  </main>
+
 </body>
 </html>
