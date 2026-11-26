@@ -2,7 +2,7 @@
    AI Chatbot - liquid glass style
    ========================================================== */
 
-/* ---------- 1. Colours and sizes ---------- */
+/* ---------- 1. Colours and sizes we reuse everywhere ---------- */
 :root {
   --indigo: #5b5fe0;
   --indigo-light: #7c7ff0;
@@ -77,5 +77,311 @@ body {
 @keyframes float {
   from { transform: translate(0, 0) scale(1); }
   to   { transform: translate(40px, -30px) scale(1.12); }
+}
+
+/* ---------- 4. The main glass card ---------- */
+.chat {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 460px;
+  height: min(780px, 94vh);
+  display: flex;
+  flex-direction: column;
+  border-radius: 32px;
+  background: var(--glass-bg);
+  border: var(--glass-border);
+  backdrop-filter: var(--glass-blur);
+  -webkit-backdrop-filter: var(--glass-blur);
+  box-shadow: 0 25px 60px rgba(70, 60, 200, 0.25), var(--glass-shine);
+  overflow: hidden;
+}
+
+/* ---------- 5. Header ---------- */
+.chat-header {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 18px 22px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.5);
+  background: rgba(255, 255, 255, 0.18);
+}
+
+.header-text {
+  flex: 1;
+}
+
+.header-text h1 {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.2px;
+}
+
+.header-text p {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--text-soft);
+}
+
+.status-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--online);
+  box-shadow: 0 0 8px var(--online);
+}
+
+.icon-btn {
+  width: 38px;
+  height: 38px;
+  border: none;
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.icon-btn svg {
+  width: 22px;
+  height: 22px;
+  fill: var(--text-dark);
+}
+
+.icon-btn:hover {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+/* ---------- 6. Avatars (the little robot) ---------- */
+.avatar {
+  flex-shrink: 0;
+  width: 42px;
+  height: 42px;
+  padding: 8px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--indigo);
+  background: rgba(255, 255, 255, 0.85);
+  box-shadow: 0 4px 12px rgba(70, 60, 200, 0.15), inset 0 1px 0 #fff;
+}
+
+.avatar svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* eyes and mouth use the opposite colour of the robot body */
+.bot-eye { fill: #fff; }
+.bot-mouth { stroke: #fff; fill: none; }
+
+.avatar-large {
+  width: 54px;
+  height: 54px;
+  padding: 11px;
+}
+
+.avatar-header {
+  color: #fff;
+  background: linear-gradient(135deg, var(--indigo-light), var(--indigo));
+  box-shadow: 0 6px 16px rgba(91, 95, 224, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.avatar-header .bot-eye { fill: var(--indigo); }
+.avatar-header .bot-mouth { stroke: var(--indigo); }
+
+/* ---------- 7. Message list ---------- */
+.messages {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  padding: 22px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.7) transparent;
+}
+
+.message {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  max-width: 88%;
+  animation: pop 0.3s ease;
+}
+
+.message.user {
+  align-self: flex-end;
+  justify-content: flex-end;
+}
+
+@keyframes pop {
+  from { opacity: 0; transform: translateY(8px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.message-content {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.message.user .message-content {
+  align-items: flex-end;
+}
+
+/* ---------- 8. Bubbles ---------- */
+.bubble {
+  padding: 14px 18px;
+  border-radius: 22px;
+  font-size: 16px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+/* bot bubble = frosted white glass */
+.message.bot .bubble {
+  background: rgba(255, 255, 255, 0.62);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-top-left-radius: 8px;
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 20px rgba(70, 60, 200, 0.1), inset 0 1px 0 #fff;
+}
+
+/* user bubble = tinted indigo glass */
+.message.user .bubble {
+  color: #fff;
+  background: linear-gradient(135deg, rgba(124, 127, 240, 0.95), rgba(91, 95, 224, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.35);
+  border-top-right-radius: 8px;
+  box-shadow: 0 8px 20px rgba(91, 95, 224, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.45);
+}
+
+.bubble code {
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-family: "Consolas", "Courier New", monospace;
+  font-size: 14px;
+  background: rgba(91, 95, 224, 0.12);
+}
+
+.bubble.error {
+  color: #a3243b;
+  background: rgba(255, 225, 230, 0.7);
+}
+
+.time {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 4px;
+  font-size: 13px;
+  color: var(--text-soft);
+}
+
+.time svg {
+  width: 18px;
+  height: 18px;
+  color: var(--indigo);
+}
+
+/* ---------- 9. Typing indicator (three bouncing dots) ---------- */
+.typing {
+  display: flex;
+  gap: 5px;
+  padding: 18px 20px !important;
+}
+
+.typing span {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--indigo);
+  opacity: 0.4;
+  animation: bounce 1.1s infinite;
+}
+
+.typing span:nth-child(2) { animation-delay: 0.15s; }
+.typing span:nth-child(3) { animation-delay: 0.3s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+  40%           { transform: translateY(-6px); opacity: 1; }
+}
+
+/* ---------- 10. Input bar ---------- */
+.input-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0 18px 18px;
+  padding: 7px 7px 7px 22px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  box-shadow: 0 8px 22px rgba(70, 60, 200, 0.12), inset 0 1px 0 #fff;
+  transition: box-shadow 0.2s;
+}
+
+.input-bar:focus-within {
+  box-shadow: 0 8px 26px rgba(91, 95, 224, 0.3), inset 0 1px 0 #fff, 0 0 0 2px rgba(124, 127, 240, 0.5);
+}
+
+.input-bar input {
+  flex: 1;
+  min-width: 0;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-family: inherit;
+  font-size: 16px;
+  color: var(--text-dark);
+}
+
+.input-bar input::placeholder {
+  color: #8a8fb0;
+}
+
+.send-btn {
+  width: 48px;
+  height: 48px;
+  border: none;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  color: #fff;
+  background: linear-gradient(135deg, var(--indigo-light), var(--indigo));
+  box-shadow: 0 6px 16px rgba(91, 95, 224, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.5);
+  transition: transform 0.15s, opacity 0.2s;
+}
+
+.send-btn svg {
+  width: 22px;
+  height: 22px;
+}
+
+.send-btn:hover { transform: scale(1.06); }
+.send-btn:active { transform: scale(0.95); }
+
+.send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* keyboard users should always see where the focus is */
+.icon-btn:focus-visible,
+.send-btn:focus-visible {
+  outline: 3px solid rgba(91, 95, 224, 0.6);
+  outline-offset: 2px;
 }
 
